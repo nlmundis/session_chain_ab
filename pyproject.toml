@@ -1,0 +1,29 @@
+# Tool configuration only. This repository is not a package: its scripts run
+# from a clone, so there is no [project] table and nothing to `pip install .`.
+
+[tool.ruff]
+target-version = "py39"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "B", "I", "UP", "D"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+# Test classes and methods are named as sentences stating what they pin; a
+# docstring would restate the name. Every other docstring rule still applies.
+"tests/*" = ["D100", "D101", "D102", "D103", "D104", "D105", "D107"]
+
+[tool.mypy]
+python_version = "3.9"
+strict = true
+files = ["session_loop.py", "ab_compare.py", "fit_break_even.py", "tests"]
+
+[[tool.mypy.overrides]]
+# Tests are type-checked, but test methods need not be annotated.
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false

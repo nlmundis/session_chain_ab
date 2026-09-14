@@ -67,6 +67,7 @@ class Crossing(unittest.TestCase):
         # single = 1 + 0.05N + 0.001N^2 vs chain = 0.19N
         got = fb.crossing((1.0, 0.05, 0.001), (0.0, 0.19))
         self.assertTrue(got.describes_a_threshold)
+        assert got.n is not None
         self.assertGreater(got.n, 100)
 
     def test_a_sublinear_single_arm_reports_no_crossing_rather_than_a_reversed_one(self):
@@ -98,6 +99,7 @@ class Crossing(unittest.TestCase):
         """Single starts cheaper (no fixed cost) but climbs faster; chain wins above 50."""
         got = fb.crossing((0.0, 0.29, 0.0), (5.0, 0.19))
         self.assertEqual(got.kind, "crossing")
+        assert got.n is not None
         self.assertAlmostEqual(got.n, 50.0)
 
     def test_a_negative_discriminant_says_the_chain_always_wins_not_never(self):
@@ -270,7 +272,7 @@ class AlternativeModel(unittest.TestCase):
         ]
         rows = fb.constant_price_residuals(pts)
         self.assertEqual(len(rows), 2)
-        for point, fitted, err in rows:
+        for _point, fitted, err in rows:
             self.assertIsInstance(fitted, float)
             self.assertIsInstance(err, float)
 

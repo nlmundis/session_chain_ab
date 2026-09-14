@@ -1,0 +1,6 @@
+# Development and CI tools. None is needed to run the scripts.
+ruff==0.16.7
+# mypy 2.x no longer accepts python_version 3.9; 1.19.1 is the newest that
+# both runs on 3.9 and checks against it, and 3.9 is this repository's floor.
+mypy==1.19.1
+mutt_check @ git+https://github.com/nlmundis/mutt_check@v0.0.2

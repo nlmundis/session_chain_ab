@@ -15,6 +15,7 @@ import re
 import stat
 import sys
 import unittest
+from typing import Any
 
 REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, REPO)
@@ -31,10 +32,18 @@ def _read(name: str) -> str:
         return fh.read()
 
 
-def _summary(arm: str, n: int) -> dict:
+def _summary(arm: str, n: int) -> dict[str, Any]:
     """The committed summary row for one cell."""
-    rows = json.loads(_read(os.path.join("measurements", f"read_{arm}_{n}", "summary.json")))
+    rows: list[dict[str, Any]] = json.loads(_read(os.path.join("measurements", f"read_{arm}_{n}", "summary.json")))
     return rows[0]
+
+
+def _search(pattern: str, text: str) -> re.Match[str]:
+    """The first match of `pattern` in `text`; fails the test run when there is none."""
+    match = re.search(pattern, text, re.M)
+    if match is None:
+        raise AssertionError(f"pattern {pattern!r} not found")
+    return match
 
 
 class PilotNumbersTest(unittest.TestCase):
@@ -59,8 +68,9 @@ class PilotNumbersTest(unittest.TestCase):
         cost = (large["cost_usd"] / large["turns"]) / (small["cost_usd"] / small["turns"])
         self.assertIn(f"grew {ctx:.3f}x from N = 12 to N = 72", self.readme)
         self.assertIn(f"grew {cost:.3f}x", self.readme)
-        self.assertIn(f"({small['context_tokens'] / small['turns']:,.0f} to {large['context_tokens'] / large['turns']:,.0f} tokens)",
-                      self.readme)
+        per_turn_small = small["context_tokens"] / small["turns"]
+        per_turn_large = large["context_tokens"] / large["turns"]
+        self.assertIn(f"({per_turn_small:,.0f} to {per_turn_large:,.0f} tokens)", self.readme)
         for n in (24, 48):
             ratio = _summary("chain", n)["cost_usd"] / _summary("single", n)["cost_usd"]
             with self.subTest(n=n):
@@ -71,14 +81,15 @@ class PilotNumbersTest(unittest.TestCase):
         with contextlib.redirect_stdout(buf):
             self.assertEqual(fb.main([]), 0)
         out = buf.getvalue()
-        low, high = re.search(r"BREAK-EVEN BAND: N = (\d+) to (\d+) files", out).groups()
+        low, high = _search(r"BREAK-EVEN BAND: N = (\d+) to (\d+) files", out).groups()
         self.assertIn(f"N = {low} to {high} files", self.readme)
-        fits = dict(re.findall(r"^(published|symmetric A|symmetric B) .*\n(?:.*\n){2}  verdict: chaining wins above N = ([\d.]+)", out, re.M))
+        verdict = r"^(published|symmetric A|symmetric B) .*\n(?:.*\n){2}  verdict: chaining wins above N = ([\d.]+)"
+        fits = dict(re.findall(verdict, out, re.M))
         self.assertEqual(set(fits), {"published", "symmetric A", "symmetric B"})
         self.assertIn(f"Two symmetric fits give {fits['symmetric A']} and {fits['symmetric B']}", self.readme)
         self.assertIn(f"the retracted asymmetric fit gives {fits['published']}", self.readme)
         b_residuals = out.split("residuals of the symmetric B fit", 1)[1]
-        worst = re.search(r"single N= 12: .*\(([+-][\d.]+)%\)", b_residuals).group(1)
+        worst = _search(r"single N= 12: .*\(([+-][\d.]+)%\)", b_residuals).group(1)
         self.assertIn(f"misses the N = 12 cell by {abs(float(worst)):.1f}%", self.readme)
 
     def test_the_constant_price_claim_is_what_the_script_prints(self) -> None:
@@ -109,7 +120,8 @@ class MeasurementsTest(unittest.TestCase):
 
     def test_each_chain_ledger_sums_to_its_summary(self) -> None:
         for arm, n in CELLS:
-            rows = [json.loads(x) for x in _read(os.path.join("measurements", f"read_{arm}_{n}", "ledger.jsonl")).splitlines()]
+            ledger = _read(os.path.join("measurements", f"read_{arm}_{n}", "ledger.jsonl"))
+            rows = [json.loads(x) for x in ledger.splitlines()]
             summary = _summary(arm, n)
             with self.subTest(cell=f"{arm}_{n}"):
                 self.assertEqual(len(rows), summary["iterations"])
@@ -168,7 +180,9 @@ class PackagingTest(unittest.TestCase):
         pattern = re.compile(r"/Users/\w|/home/\w|C:\\\\Users|[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}\b")
         names = []
         for root, dirs, files in os.walk(REPO):
-            dirs[:] = [d for d in dirs if d not in {".git", "__pycache__", ".venv", "venv"}]
+            # Hidden directories are tool caches and environments (.mypy_cache, .venv), except .github.
+            dirs[:] = [d for d in dirs
+                       if d not in {"__pycache__", "venv"} and (d == ".github" or not d.startswith("."))]
             names += [os.path.relpath(os.path.join(root, f), REPO) for f in files
                       if f.endswith((".py", ".md", ".json", ".jsonl", ".toml", ".yml")) or f == "Makefile"]
         self.assertIn("session_loop.py", names)

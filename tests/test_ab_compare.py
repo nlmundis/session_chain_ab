@@ -708,7 +708,8 @@ class MainControls(unittest.TestCase):
         self.assertTrue(pathlib.Path(calls[0]["cwd"]).is_absolute())
 
     def test_the_single_arm_gets_one_session_and_the_chain_enough_to_finish(self):
-        _, calls = self._main(["--repo", str(self.repo), "--files", "5", "--batch", "2", "--out", str(self.repo.parent / "o")])
+        out = str(self.repo.parent / "o")
+        _, calls = self._main(["--repo", str(self.repo), "--files", "5", "--batch", "2", "--out", out])
         single, chain = calls
         self.assertEqual(single["max_iterations"], 1)
         self.assertEqual(chain["max_iterations"], 3 + 2)
@@ -729,13 +730,16 @@ class MainControls(unittest.TestCase):
             # Write a report that is correct for the modules AS THEY WERE, then
             # edit one. Graded against the single pre-run snapshot, both arms
             # score 5; re-snapshotting per arm would mark m0 wrong for the second.
-            report = re.search(r"Maintain a JSON report at (\S+) ", prompt).group(1)
+            match = re.search(r"Maintain a JSON report at (\S+) ", prompt)
+            assert match is not None
+            report = match.group(1)
             entry = {"top_level_defs": 2, "has_docstring": True}
             pathlib.Path(report).write_text(json.dumps({"files": {f"m{i}.py": entry for i in range(5)}}))
             (self.repo / "m0.py").write_text("def x():\n    pass\n")
             return sl.ChainResult(iterations=(), stop_reason="done")
 
-        code, _ = self._main(["--repo", str(self.repo), "--files", "5", "--batch", "5", "--out", str(out)], chain=editing)
+        argv = ["--repo", str(self.repo), "--files", "5", "--batch", "5", "--out", str(out)]
+        code, _ = self._main(argv, chain=editing)
         truth = json.loads((out / "ground_truth.json").read_text())
         self.assertEqual(truth["m0.py"]["top_level_defs"], 2)
         summaries = json.loads((out / "summary.json").read_text())

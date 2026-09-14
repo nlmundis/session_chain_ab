@@ -50,7 +50,6 @@ import json
 import pathlib
 import sys
 from collections.abc import Sequence
-from typing import Any
 
 # Task sizes with a committed measurement, per arm. Kept explicit rather than
 # globbed so that a directory appearing or disappearing changes the fit only when
@@ -317,7 +316,11 @@ def build_fits(single: Sequence[Point], chain: Sequence[Point]) -> list[Fit]:
         One Fit per modelling choice.
     """
     return [
-        _fit("published (single free intercept, chain through origin)", fit_quadratic(single), fit_line(chain, through_origin=True)),
+        _fit(
+            "published (single free intercept, chain through origin)",
+            fit_quadratic(single),
+            fit_line(chain, through_origin=True),
+        ),
         _fit("symmetric A (both arms free intercept)", fit_quadratic(single), fit_line(chain, through_origin=False)),
         _fit(
             "symmetric B (both arms through origin)",
@@ -382,6 +385,22 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _describe_verdict(fit: Fit) -> str:
+    """One line saying where, if anywhere, chaining becomes cheaper on this fit."""
+    if fit.verdict.kind == "crossing":
+        return f"chaining wins above N = {fit.crossing:.1f}"
+    if fit.verdict.kind == "chain_always":
+        return "chaining is cheaper at EVERY size on this fit"
+    if fit.verdict.kind == "single_always":
+        return "one long session is cheaper at every size on this fit"
+    return "undetermined"
+
+
+def _residual_text(fitted: float, measured: float) -> str:
+    """A fitted cost beside the measured one, with the signed error at full precision."""
+    return f"fit {fitted:8.4f} vs measured {measured:8.4f}  ({100 * (fitted - measured) / measured:+.4f}%)"
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Fit the curves and print the break-even band.
 
@@ -436,11 +455,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for f in fits:
         a, b, c = f.single
         ci, cs = f.chain
-        where = {
-            "crossing": lambda: f"chaining wins above N = {f.crossing:.1f}",
-            "chain_always": lambda: "chaining is cheaper at EVERY size on this fit",
-            "single_always": lambda: "one long session is cheaper at every size on this fit",
-        }.get(f.verdict.kind, lambda: "undetermined")()
+        where = _describe_verdict(f)
         print(f"{f.name}\n  single(N) = {a:.4f} + {b:.6f}N + {c:.8f}N^2")
         print(f"  chain(N)  = {ci:.4f} + {cs:.6f}N")
         print(f"  verdict: {where}")
@@ -452,11 +467,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         a, b, c = f.single
         for p in single:
             fitted = a + b * p.n + c * p.n * p.n
-            print(f"  single N={p.n:3d}: fit {fitted:8.4f} vs measured {p.cost_usd:8.4f}  ({100 * (fitted - p.cost_usd) / p.cost_usd:+.4f}%)")
+            print(f"  single N={p.n:3d}: {_residual_text(fitted, p.cost_usd)}")
         ci, cs = f.chain
         for p in chain:
             fitted = ci + cs * p.n
-            print(f"  chain  N={p.n:3d}: fit {fitted:8.4f} vs measured {p.cost_usd:8.4f}  ({100 * (fitted - p.cost_usd) / p.cost_usd:+.4f}%)")
+            print(f"  chain  N={p.n:3d}: {_residual_text(fitted, p.cost_usd)}")
 
     if crossings:
         print(

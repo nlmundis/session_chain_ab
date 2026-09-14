@@ -213,7 +213,7 @@ whose session reported no cost, since the budget can no longer be enforced.
   judges the work.
 - **Measured ledgers hash session ids.** The committed ledgers replace each
   Claude Code session id with a SHA-256 prefix. Runs you make keep the real ids.
-- **Tested on Linux and macOS.** CI runs the suite and the mutation gate on
+- **Tested on Linux and macOS.** CI runs ruff, mypy, the suite and the mutation gate on
   Ubuntu under Python 3.9 through 3.14 and on macOS under 3.12. The tests fake
   the `claude` CLI and never spend anything; they also pass locally with no
   `claude` on PATH. Windows has not been run.
@@ -221,9 +221,15 @@ whose session reported no cost, since the budget can no longer be enforced.
 ## Develop
 
 ```bash
-make test     # unit suite, no network, no claude
-make check    # unit suite, then the curated mutation gate
+pip install -r requirements-dev.txt   # ruff, mypy and mutt_check, pinned
+make test       # unit suite, no network, no claude
+make check      # ruff, mypy (strict, against 3.9), unit suite, mutation gate
 ```
+
+The scripts themselves need nothing beyond the standard library; the pinned
+tools are for development and CI only. Test methods are exempt from the
+docstring and annotation requirements, since each is named as a sentence
+stating what it pins; everything else is held to both.
 
 The mutation gate uses [mutt_check](https://github.com/nlmundis/mutt_check).
 Each entry in `mutt_check.toml` reverts one design decision and names the test

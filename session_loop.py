@@ -487,12 +487,14 @@ def run_iteration(
             for d in payload.get("permission_denials") or []
         )
         raw_cost = payload.get("total_cost_usd")
-        cost_is_known = isinstance(raw_cost, (int, float)) and not isinstance(raw_cost, bool)
+        cost: float | None = (
+            float(raw_cost) if isinstance(raw_cost, (int, float)) and not isinstance(raw_cost, bool) else None
+        )
         return IterationResult(
             verdict=verdict,
             session_id=payload.get("session_id"),
-            cost_usd=float(raw_cost) if cost_is_known else 0.0,
-            cost_is_known=cost_is_known,
+            cost_usd=cost if cost is not None else 0.0,
+            cost_is_known=cost is not None,
             context_tokens=_context_tokens(usage),
             input_tokens=_usage_int(usage, "input_tokens"),
             cache_creation_tokens=_usage_int(usage, "cache_creation_input_tokens"),

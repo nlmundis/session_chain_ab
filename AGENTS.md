@@ -9,14 +9,16 @@ experiment with an `ast` grader, `fit_break_even.py` the break-even fit over
 ## Commands
 
 ```bash
-make check     # the gate: unit suite, then the curated mutation gate
+make check     # the gate: ruff, mypy, unit suite, then the curated mutation gate
+make lint      # ruff only
+make typecheck # mypy only, strict, against Python 3.9
 make test      # unit suite only, a second or two
 ```
 
 Neither target calls `claude` or the network; the suite fakes the CLI. Never
 run `ab_compare.py` or `session_loop.py` for real without the owner's say-so,
-because both spend money on their account. `make check` needs
-[mutt_check](https://github.com/nlmundis/mutt_check) on PATH.
+because both spend money on their account. `make check` needs the pinned tools
+from `requirements-dev.txt` (ruff, mypy, [mutt_check](https://github.com/nlmundis/mutt_check)).
 
 ## Rules for changing this repository
 
@@ -31,7 +33,10 @@ because both spend money on their account. `make check` needs
   not demonstrated, for the pilot.
 - A mutant goes into `mutt_check.toml` only together with the test that kills
   it, naming that test class in `suites`.
-- No dependencies. No `match`, no runtime `X | Y` unions: annotations are fine
+- No runtime dependencies; development tools are pinned in `requirements-dev.txt`.
+  Source is held to ruff (including Google-convention docstrings) and strict
+  mypy; test methods are exempt from docstrings and annotations only.
+- Keep the floor at 3.9. No `match`, no runtime `X | Y` unions: annotations are fine
   under `from __future__ import annotations`, but nothing may evaluate them.
 - A name and its docstring must let a reader predict what a function does, and
   why a caller would reach for it, without opening the body.

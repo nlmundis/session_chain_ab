@@ -611,7 +611,7 @@ class SubprocessFailureSurfaces(unittest.TestCase):
         self.assertEqual(kwargs["timeout"], 12.5)
 
     def test_cwd_reaches_the_subprocess(self):
-        """cwd is documented as setting the floor cost of every iteration."""
+        """The working directory is documented as setting the floor cost of every iteration."""
         runner = FakeRunner([_payload()])
         sl.run_iteration("x", cwd=pathlib.Path("/tmp"), runner=runner)
         _, kwargs = runner.calls[0]
@@ -666,7 +666,7 @@ class InvariantBreakingFlagsRejected(unittest.TestCase):
         self.assertIn("acceptEdits", argv)
 
     def test_dont_ask_is_allowed_because_it_denies_rather_than_approves(self):
-        """dontAsk auto-denies anything that would prompt, so denials still reach the classifier."""
+        """The dontAsk mode auto-denies anything that would prompt, so denials still reach the classifier."""
         self.assertIn("dontAsk", sl.build_command(permission_mode="dontAsk"))
 
     def test_settings_is_refused_because_it_can_set_a_bypass_mode(self):

@@ -21,6 +21,6 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      # Pinned to a tag so a change in the gate cannot turn this build red on its own.
-      - run: pip install "mutt_check @ git+https://github.com/nlmundis/mutt_check@v0.0.2"
+      # ruff, mypy and mutt_check, each pinned so a new release cannot turn this build red on its own.
+      - run: pip install -r requirements-dev.txt
       - run: make check PYTHON=python

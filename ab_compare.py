@@ -190,7 +190,7 @@ _EXCLUDED_DIRS = frozenset({"venv", "env", "site-packages", "node_modules", "__p
 
 
 def _is_excluded(relative: pathlib.Path) -> bool:
-    """Whether a module path, relative to the repo, sits under a hidden directory or an environment or cache directory."""
+    """Whether a module path, relative to the repo, sits under a hidden, environment or cache directory."""
     return any(part.startswith(".") or part in _EXCLUDED_DIRS for part in relative.parts[:-1])
 
 

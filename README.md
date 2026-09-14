@@ -213,8 +213,10 @@ whose session reported no cost, since the budget can no longer be enforced.
   judges the work.
 - **Measured ledgers hash session ids.** The committed ledgers replace each
   Claude Code session id with a SHA-256 prefix. Runs you make keep the real ids.
-- **Tested on macOS**, Python 3.9 through 3.14, with `claude` absent: the test
-  suite fakes the CLI and never spends anything.
+- **Tested on Linux and macOS.** CI runs the suite and the mutation gate on
+  Ubuntu under Python 3.9 through 3.14 and on macOS under 3.12, with no `claude`
+  CLI installed: the tests fake it and never spend anything. Windows has not
+  been run.
 
 ## Develop
 

@@ -231,6 +231,9 @@ tools are for development and CI only. Test methods are exempt from the
 docstring and annotation requirements, since each is named as a sentence
 stating what it pins; everything else is held to both.
 
+Changes reach `main` through pull requests that pass CI, and a `vX.Y.Z` tag on
+`main` publishes a GitHub Release after the same checks pass; see `AGENTS.md`.
+
 The mutation gate uses [mutt_check](https://github.com/nlmundis/mutt_check).
 Each entry in `mutt_check.toml` reverts one design decision and names the test
 that must fail.

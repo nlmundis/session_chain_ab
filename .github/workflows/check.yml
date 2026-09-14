@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  # The release workflow runs this same gate on the tagged commit before publishing.
+  workflow_call:
 
 jobs:
   check:
@@ -24,3 +26,13 @@ jobs:
       # ruff, mypy and mutt_check, each pinned so a new release cannot turn this build red on its own.
       - run: pip install -r requirements-dev.txt
       - run: make check PYTHON=python
+
+  # The one check branch protection requires. Requiring each matrix job by name
+  # would silently stop protecting main the day the matrix changes.
+  all-checks:
+    name: all checks passed
+    if: always()
+    needs: [check]
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.check.result }}" = "success"

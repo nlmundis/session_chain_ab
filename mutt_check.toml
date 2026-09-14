@@ -333,3 +333,13 @@ find = '''    for f in fits:
         print(f"\nresiduals of the'''
 replace = '''    for f in fits[:1]:
         print(f"\nresiduals of the'''
+
+# --- release automation -----------------------------------------------------
+
+[[mutant]]
+name = "required_check_renamed_in_ci"
+why = "Branch protection waits forever for a check name no job reports, or protects nothing if the rule is removed to unblock it."
+suites = ["tests.test_repo.ReleaseAutomationTest"]
+file = ".github/workflows/check.yml"
+find = "    name: all checks passed"
+replace = "    name: all checks"

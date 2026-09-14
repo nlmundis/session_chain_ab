@@ -168,6 +168,29 @@ class DocsTest(unittest.TestCase):
                     self.assertIn(target, targets)
 
 
+class ReleaseAutomationTest(unittest.TestCase):
+    """The branch ruleset, the CI job it requires, and the release gate must name each other correctly."""
+
+    def test_the_required_check_is_the_aggregate_job_ci_actually_runs(self) -> None:
+        ruleset = json.loads(_read(os.path.join(".github", "rulesets", "main.json")))
+        checks = [rule for rule in ruleset["rules"] if rule["type"] == "required_status_checks"]
+        self.assertEqual(len(checks), 1)
+        required = {c["context"] for c in checks[0]["parameters"]["required_status_checks"]}
+        workflow = _read(os.path.join(".github", "workflows", "check.yml"))
+        aggregate = _search(r"^  all-checks:\n    name: (.+)\n    if: always\(\)\n    needs: \[check\]$", workflow)
+        self.assertEqual(required, {aggregate.group(1)})
+
+    def test_a_release_runs_the_same_gate_before_publishing(self) -> None:
+        release = _read(os.path.join(".github", "workflows", "release.yml"))
+        self.assertIn("uses: ./.github/workflows/check.yml", release)
+        self.assertIn("needs: checks", release)
+        self.assertIn("workflow_call:", _read(os.path.join(".github", "workflows", "check.yml")))
+
+    def test_release_tags_are_protected_from_moving(self) -> None:
+        ruleset = json.loads(_read(os.path.join(".github", "rulesets", "release-tags.json")))
+        self.assertEqual(ruleset["target"], "tag")
+        self.assertEqual({rule["type"] for rule in ruleset["rules"]}, {"deletion", "non_fast_forward", "update"})
+
 class PackagingTest(unittest.TestCase):
     def test_the_scripts_are_executable_with_a_python3_shebang(self) -> None:
         for name in ("session_loop.py", "ab_compare.py", "fit_break_even.py"):

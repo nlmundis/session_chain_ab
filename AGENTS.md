@@ -20,6 +20,15 @@ run `ab_compare.py` or `session_loop.py` for real without the owner's say-so,
 because both spend money on their account. `make check` needs the pinned tools
 from `requirements-dev.txt` (ruff, mypy, [mutt_check](https://github.com/nlmundis/mutt_check)).
 
+## Changes and releases
+
+`main` is protected by the ruleset in `.github/rulesets/main.json`: every change
+lands through a pull request, squash or rebase, after the `all checks passed`
+job is green. To release, push a tag `vX.Y.Z` on a commit already on `main`;
+`.github/workflows/release.yml` reruns the whole gate on that commit and only
+then creates the GitHub Release. Release tags cannot be moved or deleted
+(`.github/rulesets/release-tags.json`), so a mistake is fixed by a new tag.
+
 ## Rules for changing this repository
 
 - Every number in the README is recomputed in `tests/test_repo.py` from

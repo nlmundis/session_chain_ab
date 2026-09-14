@@ -1,0 +1,335 @@
+# The curated mutation gate for session_chain_ab.
+#
+# Every entry reverts ONE decision the harness depends on and says why that
+# decision exists. `suites` names the test class that pins it, so this file is
+# also a map from each decision to its test. `make check` runs it after the
+# unit suite.
+#
+# A mutant goes in here only together with the test that kills it. A known
+# survivor would be a to-do dressed as evidence.
+#
+# Run: mutt_check           (https://github.com/nlmundis/mutt_check)
+
+[run]
+suites = ["tests.test_session_loop", "tests.test_ab_compare", "tests.test_fit_break_even", "tests.test_repo"]
+timeout = 300
+
+# --- session_loop: judging a run --------------------------------------------
+
+[[mutant]]
+name = "denied_run_counts_as_ok"
+why = "A headless run whose tool calls were denied reports is_error false and completed; trusting that chains on degraded work."
+suites = ["tests.test_session_loop.Classification"]
+file = "session_loop.py"
+find = '''    if payload.get("permission_denials"):
+        return IterationVerdict.DEGRADED_BY_DENIAL, None'''
+replace = '''    if False:
+        return IterationVerdict.DEGRADED_BY_DENIAL, None'''
+
+[[mutant]]
+name = "any_terminal_reason_is_a_normal_end"
+why = "The CLI's terminal_reason vocabulary is undocumented; accepting anything but 'completed' fails open."
+suites = ["tests.test_session_loop.Classification"]
+file = "session_loop.py"
+find = '''    if payload.get("is_error") or payload.get("terminal_reason") != _TERMINAL_REASON_OK:'''
+replace = '''    if payload.get("is_error"):'''
+
+[[mutant]]
+name = "degraded_run_does_not_stop_the_chain"
+why = "The default must be to stop on a denied tool call, not to build on the work that routed around it."
+suites = ["tests.test_session_loop.ChainControl", "tests.test_session_loop.MainExitCode"]
+file = "session_loop.py"
+find = "        stop_on_degraded=not args.continue_on_degraded,"
+replace = "        stop_on_degraded=False,"
+
+[[mutant]]
+name = "unknown_cost_reported_as_known"
+why = "A launch failure may have run and spent before the timeout; a zero there is not a measured zero."
+suites = ["tests.test_session_loop.UnknownCostIsNotZeroCost"]
+file = "session_loop.py"
+find = "            cost_is_known=False,"
+replace = "            cost_is_known=True,"
+
+# --- session_loop: the budget and the premise -------------------------------
+
+[[mutant]]
+name = "chain_budget_not_enforced_before_launch"
+why = "The cumulative ceiling is what stops a runaway chain from spending past its budget."
+suites = ["tests.test_session_loop.ChainControl"]
+file = "session_loop.py"
+find = "        if remaining <= 0:"
+replace = "        if False:"
+
+[[mutant]]
+name = "child_cap_ignores_remaining_budget"
+why = "Each child's --max-budget-usd must be the tighter of the caller's cap and what the chain can still afford."
+suites = ["tests.test_session_loop.ChainControl"]
+file = "session_loop.py"
+find = "        cap = remaining if caller_cap is None else min(caller_cap, remaining)"
+replace = "        cap = caller_cap"
+
+[[mutant]]
+name = "resume_is_allowed"
+why = "A resumed session is not the fresh context the whole measurement rests on."
+suites = ["tests.test_session_loop.InvariantBreakingFlagsRejected"]
+file = "session_loop.py"
+find = '''    {"--resume", "-r", "--continue", "-c", "--fork-session", "--dangerously-skip-permissions",'''
+replace = '''    {"-r", "--continue", "-c", "--fork-session", "--dangerously-skip-permissions",'''
+
+[[mutant]]
+name = "bypass_permission_mode_is_allowed"
+why = "bypassPermissions means no call is ever denied, so the denial classifier can never fire."
+suites = ["tests.test_session_loop.InvariantBreakingFlagsRejected"]
+file = "session_loop.py"
+find = '''_BLIND_PERMISSION_MODES = frozenset({"bypassPermissions"})'''
+replace = '''_BLIND_PERMISSION_MODES = frozenset()'''
+
+# --- session_loop: what reaches the ledger ----------------------------------
+
+[[mutant]]
+name = "cache_split_not_recorded"
+why = "Only the sum reached the pilot's ledger, which is why the caching explanation had to be retracted."
+suites = ["tests.test_session_loop.Ledger"]
+file = "session_loop.py"
+find = '''            cache_read_tokens=_usage_int(usage, "cache_read_input_tokens"),'''
+replace = ""
+
+[[mutant]]
+name = "cache_split_not_written_to_the_ledger"
+why = "A split the result holds but the ledger drops is no more checkable than no split."
+suites = ["tests.test_session_loop.Ledger", "tests.test_repo.DocsTest"]
+file = "session_loop.py"
+find = '''        "cache_creation_tokens": result.cache_creation_tokens,'''
+replace = ""
+
+[[mutant]]
+name = "null_usage_counter_crashes"
+why = "A future CLI dropping or nulling a counter should degrade the measurement, not kill a chain."
+suites = ["tests.test_session_loop.Ledger"]
+file = "session_loop.py"
+find = "    return int(usage.get(key, 0) or 0)"
+replace = "    return int(usage[key])"
+
+# --- ab_compare: the instrument ---------------------------------------------
+
+[[mutant]]
+name = "grep_allowed"
+why = "Grep answers many files per call, so tool calls stop scaling with N; it produced the retracted curve."
+suites = ["tests.test_ab_compare.PromptFairness", "tests.test_ab_compare.ArmExecution"]
+file = "ab_compare.py"
+find = '_ALLOWED_TOOLS = "Read Write"'
+replace = '_ALLOWED_TOOLS = "Read Write Grep"'
+
+[[mutant]]
+name = "a_bool_scores_as_a_count"
+why = "True == 1 in Python; a malformed report must fail, never coincide with a count of one."
+suites = ["tests.test_ab_compare.StrictGrading"]
+file = "ab_compare.py"
+find = "        if isinstance(defs, (int, float)) and not isinstance(defs, bool):"
+replace = "        if isinstance(defs, (int, float)):"
+
+[[mutant]]
+name = "docstring_answer_not_type_checked"
+why = "1 == True in Python, so without a bool check a report answering 1 for a docstring coincides with the right answer."
+suites = ["tests.test_ab_compare.StrictGrading"]
+file = "ab_compare.py"
+find = "                and isinstance(doc, bool)\n"
+replace = ""
+
+[[mutant]]
+name = "stale_report_survives_into_the_next_arm"
+why = "A report left by an earlier run would be graded as this arm's work."
+suites = ["tests.test_ab_compare.ArmExecution"]
+file = "ab_compare.py"
+find = "    report_path.unlink(missing_ok=True)"
+replace = "    pass"
+
+[[mutant]]
+name = "provenance_publishes_the_absolute_path"
+why = "Committed provenance would carry the runner's home directory."
+suites = ["tests.test_ab_compare.ProvenanceRecord"]
+file = "ab_compare.py"
+find = '''        "repo": args.repo.resolve().name,'''
+replace = '''        "repo": str(args.repo.resolve()),'''
+
+[[mutant]]
+name = "readme_flag_renamed_in_code"
+why = "The README's run commands must use flags the script still accepts."
+suites = ["tests.test_repo.DocsTest"]
+file = "ab_compare.py"
+find = '''    parser.add_argument("--batch", type=int, default=4, help="Files per chained session.")'''
+replace = '''    parser.add_argument("--batch-size", type=int, default=4, help="Files per chained session.")'''
+
+# --- fit_break_even: what may be fitted and said ----------------------------
+
+[[mutant]]
+name = "partially_correct_cell_is_fitted"
+why = "An arm that did not score 100% varies cost and correctness at once, which the fit cannot separate."
+suites = ["tests.test_fit_break_even.LoadingChecksTheDataItReads"]
+file = "fit_break_even.py"
+find = '''    if s.get("correct") != s.get("total_files"):'''
+replace = '''    if False:'''
+
+[[mutant]]
+name = "band_quoted_as_a_point"
+why = "Three defensible fits span 94 to 107; a single number implies precision the data does not have."
+suites = ["tests.test_fit_break_even.CommandLine", "tests.test_repo.PilotNumbersTest"]
+file = "fit_break_even.py"
+find = '''            f"\nBREAK-EVEN BAND: N = {min(crossings):.0f} to {max(crossings):.0f} files, "'''
+replace = '''            f"\nBREAK-EVEN: N = {min(crossings):.0f} files, "'''
+
+[[mutant]]
+name = "extrapolation_warning_dropped"
+why = "The band lies beyond the largest measured N; the output must say it is a projection."
+suites = ["tests.test_fit_break_even.CommandLine"]
+file = "fit_break_even.py"
+find = '''            f"  EXTRAPOLATION: the largest task size actually measured is N = {largest_measured}. "'''
+replace = '''            f"  the largest task size actually measured is N = {largest_measured}. "'''
+
+[[mutant]]
+name = "symmetric_fit_b_uses_a_free_intercept"
+why = "Fit B pins both arms through the origin; changing it silently moves the published band."
+suites = ["tests.test_repo.PilotNumbersTest"]
+file = "fit_break_even.py"
+find = "through_origin=False)),"
+replace = "through_origin=True)),"
+
+[[mutant]]
+name = "a_readme_cell_changes_in_the_data"
+why = "The README table is recomputed from the committed summaries; data and prose must move together."
+suites = ["tests.test_repo.PilotNumbersTest", "tests.test_fit_break_even.CommandLine"]
+file = "measurements/read_single_48/summary.json"
+find = '"cost_usd": 6.3807'
+replace = '"cost_usd": 6.2807'
+
+# --- fixes from the cold review, each pinned --------------------------------
+
+[[mutant]]
+name = "tools_not_restricted"
+why = "--allowedTools only pre-approves; without --tools, read-only Bash like grep and wc runs unprompted."
+suites = ["tests.test_ab_compare.ArmExecution"]
+file = "ab_compare.py"
+find = '''        extra_args=["--tools", _TOOLS, "--allowedTools", _ALLOWED_TOOLS],'''
+replace = '''        extra_args=["--allowedTools", _ALLOWED_TOOLS],'''
+
+[[mutant]]
+name = "relative_out_not_resolved"
+why = "The prompt hands --out to a session whose cwd is --repo, so a relative path lands inside the measured repo."
+suites = ["tests.test_ab_compare.MainControls"]
+file = "ab_compare.py"
+find = "    args.out = args.out.resolve()\n"
+replace = ""
+
+[[mutant]]
+name = "each_arm_snapshots_its_own_truth"
+why = "A later arm would be graded against modules an earlier arm edited."
+suites = ["tests.test_ab_compare.MainControls"]
+file = "ab_compare.py"
+find = "            truth=truth,\n"
+replace = ""
+
+[[mutant]]
+name = "modified_repo_not_flagged"
+why = "An arm that edited the modules it was told to only read is not a clean measurement."
+suites = ["tests.test_ab_compare.MainControls"]
+file = "ab_compare.py"
+find = "    if ground_truth(files, repo=args.repo) != truth:"
+replace = "    if False:"
+
+[[mutant]]
+name = "chain_iteration_cap_too_small"
+why = "A fixed cap of 10 cannot finish 48 files at batch 4; the arm stops after spending and the cell is unusable."
+suites = ["tests.test_ab_compare.MainControls"]
+file = "ab_compare.py"
+find = "        args.max_iterations = -(-len(files) // args.batch) + 2"
+replace = "        args.max_iterations = 10"
+
+[[mutant]]
+name = "single_arm_gets_many_sessions"
+why = "One session is what defines the single arm."
+suites = ["tests.test_ab_compare.MainControls"]
+file = "ab_compare.py"
+find = '''            max_iterations=1 if label == "single" else args.max_iterations,'''
+replace = '''            max_iterations=args.max_iterations,'''
+
+[[mutant]]
+name = "short_pool_measured_silently"
+why = "Asking for 24 files and measuring 3 is a different experiment that exits 0."
+suites = ["tests.test_ab_compare.MainControls"]
+file = "ab_compare.py"
+find = "    if len(files) < args.files and not args.allow_short_pool:"
+replace = "    if False:"
+
+[[mutant]]
+name = "hidden_directories_drawn_from"
+why = "A .venv puts installed site-packages modules into the pool."
+suites = ["tests.test_ab_compare.PoolExclusions"]
+file = "ab_compare.py"
+find = '''    return any(part.startswith(".") or part in _EXCLUDED_DIRS for part in relative.parts[:-1])'''
+replace = '''    return any(part in _EXCLUDED_DIRS for part in relative.parts[:-1])'''
+
+[[mutant]]
+name = "foreign_arm_carried_forward"
+why = "Two arms measured on different pools, batches or models would sit side by side in one summary."
+suites = ["tests.test_ab_compare.SummaryCarriesForwardAcrossSittings"]
+file = "ab_compare.py"
+find = "    if foreign:"
+replace = "    if False:"
+
+[[mutant]]
+name = "fractional_count_accepted"
+why = "2.5 must not grade correct for a count of 2."
+suites = ["tests.test_ab_compare.NonIntegralCounts"]
+file = "ab_compare.py"
+find = "                float(defs).is_integer()\n                and "
+replace = "                "
+
+[[mutant]]
+name = "dont_ask_refused"
+why = "dontAsk denies what would prompt, so denials still reach the classifier; refusing it blocks the mode the docs recommend for scripts."
+suites = ["tests.test_session_loop.InvariantBreakingFlagsRejected"]
+file = "session_loop.py"
+find = '''_BLIND_PERMISSION_MODES = frozenset({"bypassPermissions"})'''
+replace = '''_BLIND_PERMISSION_MODES = frozenset({"bypassPermissions", "dontAsk"})'''
+
+[[mutant]]
+name = "settings_passed_through"
+why = "--settings can set defaultMode to bypassPermissions, which blinds the denial classifier."
+suites = ["tests.test_session_loop.InvariantBreakingFlagsRejected"]
+file = "session_loop.py"
+find = '''     "--settings"}'''
+replace = '''     }'''
+
+[[mutant]]
+name = "chain_continues_after_an_unknown_cost"
+why = "A session that reported no cost may have spent; the budget cannot be enforced after it."
+suites = ["tests.test_session_loop.MissingCostStopsTheChain"]
+file = "session_loop.py"
+find = "        if not result.cost_is_known:"
+replace = "        if False:"
+
+[[mutant]]
+name = "cli_budget_not_passed_to_the_chain"
+why = "Without it, the command line spends without a ceiling."
+suites = ["tests.test_session_loop.MainExitCode"]
+file = "session_loop.py"
+find = "        chain_budget_usd=args.budget_usd,"
+replace = '''        chain_budget_usd=float("inf"),'''
+
+[[mutant]]
+name = "cli_schema_not_passed"
+why = "Without --json-schema no iteration can report done, so every chain misses its stop signal."
+suites = ["tests.test_session_loop.MainExitCode"]
+file = "session_loop.py"
+find = "        schema=args.schema,\n"
+replace = ""
+
+[[mutant]]
+name = "residuals_only_for_the_first_fit"
+why = "The band's upper edge comes from a fit that misses N=12 by 20%; hiding its residuals flatters the band."
+suites = ["tests.test_repo.PilotNumbersTest"]
+file = "fit_break_even.py"
+find = '''    for f in fits:
+        print(f"\nresiduals of the'''
+replace = '''    for f in fits[:1]:
+        print(f"\nresiduals of the'''

@@ -1,0 +1,7 @@
+{"label": "single", "index": 0, "verdict": "ok", "session_id": "sha256:7ac2f38f7d8cce30", "cost_usd": 0.767495, "context_tokens": 374321, "num_turns": 31, "wall_seconds": 96.09, "denials": [], "done": true}
+{"label": "chain", "index": 0, "verdict": "ok", "session_id": "sha256:235aab235c3d87b0", "cost_usd": 0.392024, "context_tokens": 181083, "num_turns": 12, "wall_seconds": 40.96, "denials": [], "done": false}
+{"label": "chain", "index": 1, "verdict": "ok", "session_id": "sha256:aceaade9136d5a55", "cost_usd": 0.39414550000000004, "context_tokens": 181688, "num_turns": 12, "wall_seconds": 39.97, "denials": [], "done": false}
+{"label": "chain", "index": 2, "verdict": "ok", "session_id": "sha256:7386eba6b14134b6", "cost_usd": 0.40221949999999995, "context_tokens": 184086, "num_turns": 12, "wall_seconds": 36.41, "denials": [], "done": false}
+{"label": "chain", "index": 3, "verdict": "ok", "session_id": "sha256:466ec3fd5500514d", "cost_usd": 0.393599, "context_tokens": 182076, "num_turns": 12, "wall_seconds": 35.78, "denials": [], "done": false}
+{"label": "chain", "index": 4, "verdict": "ok", "session_id": "sha256:e0a3dad4ac8ac612", "cost_usd": 0.8115439999999999, "context_tokens": 260779, "num_turns": 8, "wall_seconds": 42.37, "denials": [], "done": false}
+{"label": "chain", "index": 5, "verdict": "ok", "session_id": "sha256:3df3a6c4a466c256", "cost_usd": 0.40624400000000005, "context_tokens": 184452, "num_turns": 9, "wall_seconds": 38.55, "denials": [], "done": true}

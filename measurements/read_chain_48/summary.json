@@ -1,0 +1,16 @@
+[
+ {
+  "arm": "chain",
+  "iterations": 13,
+  "stop_reason": "done",
+  "turns": 152,
+  "context_tokens": 4273149,
+  "cost_usd": 9.0413,
+  "correct": 48,
+  "attempted": 48,
+  "total_files": 48,
+  "cost_per_correct": 0.1884,
+  "tokens_per_correct": 89024,
+  "denials": []
+ }
+]
